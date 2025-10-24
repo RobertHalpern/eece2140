@@ -25,7 +25,7 @@ class physics:
         
         #set inital conditions
         initial_time = 0
-        dt = 1
+        dt = .1
         start_y = 0
         start_x = 0
         positions = []
@@ -36,19 +36,23 @@ class physics:
         #if statement to control how many positions are calculated
         while y >= physics.GROUND:
             #calculate new positions
-            x = start_x + Vx * initial_time
-            y = start_y + Vy * initial_time - 0.5 * physics.GRAVITY * initial_time**2
-            
+            x = start_x + Vx * t
+            y = start_y + Vy * t - 0.5 * physics.GRAVITY * t**2
+            x= round(x, 2)
+            y= round(y, 2)
+          
+
             #append new position to list
-            positions.append((x, y, initial_time))
+            positions.append((x, y, t))
             
             #increment time
-            initial_time += dt
+            t += dt
+            t = round(t, 2)
 
             
         print(positions)
 
 #Test call to physics_calc
-physics.physics_calc(50,45)
+physics.position_calc(50,45)
 
 
