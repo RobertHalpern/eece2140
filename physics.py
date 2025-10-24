@@ -40,19 +40,24 @@ class physics:
             y = start_y + Vy * t - 0.5 * physics.GRAVITY * t**2
             x= round(x, 2)
             y= round(y, 2)
-          
 
+                  
             #append new position to list
             positions.append((x, y, t))
-            
             #increment time
             t += dt
             t = round(t, 2)
+
+        
+
+
+
+            
 
             
         print(positions)
 
 #Test call to physics_calc
-physics.position_calc(50,45)
+physics.physics_calc(50,45)
 
 
