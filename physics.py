@@ -48,7 +48,7 @@ class physics:
             
         print(positions)
 
-
-physics.position_calc(50,45)
+#Test call to physics_calc
+physics.physics_calc(50,45)
 
 
