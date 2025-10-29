@@ -2,5 +2,4 @@
 ##  EECE2140 Final
 ### Authors: Robert Halpern, Nathan Evans, Roha Sajid
 
-This is our project
-Holy moly guacamole
+Final Project for EECE2140. Simple projectile simulation program in Python.
