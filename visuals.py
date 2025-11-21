@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import physics   # Physics stays in physics.py
 
 class VisualSimulator:
     
@@ -9,84 +10,101 @@ class VisualSimulator:
         self.WIDTH = width
         self.HEIGHT = height
         self.GROUND_Y_OFFSET = ground_offset
+        
+        # --- Physics to Screen Scaling ---
         self.MAX_PHYSICS_X = max_x 
         self.MAX_PHYSICS_Y = max_y 
-        
-        # --- Scaling Factors ---
         self.X_SCALE = self.WIDTH / self.MAX_PHYSICS_X 
         self.Y_SCALE = (self.HEIGHT - self.GROUND_Y_OFFSET) / self.MAX_PHYSICS_Y 
 
-        # --- Color and Drawing Properties ---
+        # --- Drawing Colors ---
         self.SKY_BLUE = (135, 206, 235)
         self.SEA_BLUE = (0, 0, 255)
         self.ARC_COLOR = (255, 0, 0)
+        self.AIM_LINE_COLOR = (0, 0, 0)
         self.ARC_THICKNESS = 3
+        self.PROJECTILE_RADIUS = 8
         
-        # --- Wave properties ---
+        # --- Wave Animation Properties ---
         self.wave_amplitude = 15      
         self.wave_length = 200        
         self.wave_speed = 0.1        
-        self.t_wave = 0  # Time counter for wave animation
+        self.t_wave = 0  
 
-    # --- Helper Methods ---
+        # --- Launch Origin Location (pixels) ---
+        self.launch_x_px = 80  
+        self.launch_y_px = self.HEIGHT - self.GROUND_Y_OFFSET - 10
 
-    def _physics_to_screen(self, x_phys, y_phys):
-        """
-        Converts physics coordinates (x_phys, y_phys) in meters
-        to screen coordinates (screen_x, screen_y) in pixels.
-        Note the use of 'self' to access class variables.
-        """
-        # Scale x
+        # --- Projectile Motion State ---
+        self.projectile_active = False
+        self.mouse_down = False
+        self.x = 0
+        self.y = 0
+        self.vx = 0
+        self.vy = 0
+
+        # --- Launch Power Scale (tweak feel) ---
+        self.POWER_SCALE = 0.055  
+
+
+    # --- Convert from Physics Coordinates (meters) to Screen Pixels ---
+    def _phys_to_screen(self, x_phys, y_phys):
         screen_x = int(x_phys * self.X_SCALE)
-        
-        # Scale y: Pygame's y-axis increases *downwards*.
         screen_y = int((self.HEIGHT - self.GROUND_Y_OFFSET) - (y_phys * self.Y_SCALE))
-        
         return screen_x, screen_y
 
-    def _draw_waves(self, screen):
-        """Draws the moving wave polygon."""
-        points = []
-        
-        # Generate wave points
-        for x in range(0, self.WIDTH + 1, 10):
-            # Apply the sine wave to the ground level
-            y = self.HEIGHT - self.GROUND_Y_OFFSET + math.sin((x / self.wave_length) + (self.t_wave / self.wave_speed)) * self.wave_amplitude
-            points.append((x, y))
 
-        # Add corners to close the polygon
+    # --- Draw Ocean Animation ---
+    def _draw_waves(self, screen):
+        points = []
+        for x in range(0, self.WIDTH + 1, 10):
+            y = (self.HEIGHT - self.GROUND_Y_OFFSET 
+                + math.sin((x / self.wave_length) + (self.t_wave / self.wave_speed)) * self.wave_amplitude)
+            points.append((x, y))
         points.append((self.WIDTH, self.HEIGHT))
         points.append((0, self.HEIGHT))
-
-        # Draw the wave as a filled polygon
         pygame.draw.polygon(screen, self.SEA_BLUE, points)
 
-    def _draw_trajectory(self, screen, arc):
-        """
-        Draws the projectile's path arc on the screen.
-        """
-        if len(arc) < 2:
-            return 
 
-        # Convert all physics points to screen points
-        screen_points = []
-        for x, y, t in arc:
-            # Only draw points that are within the screen boundary
-            if x * self.X_SCALE <= self.WIDTH: 
-                 screen_points.append(self._physics_to_screen(x, y))
+    # --- Mouse Launch Logic (calls physics class externally) ---
+    def _launch_projectile(self):
+        mx, my = pygame.mouse.get_pos()
+        dx = mx - self.launch_x_px
+        dy = self.launch_y_px - my  # invert due to Pygame coords
 
-        # Draw the line connecting all the screen points
-        if len(screen_points) >= 2:
-            pygame.draw.lines(screen, self.ARC_COLOR, False, screen_points, self.ARC_THICKNESS) 
+        self.vx, self.vy = physics.physics.launch_from_mouse(dx, dy, self.POWER_SCALE)
+
+        # Reset physics position
+        self.x = 0
+        self.y = 0
+        self.projectile_active = True
 
 
+    # --- Update Projectile Using Physics Class ---
+    def _update_projectile(self, dt):
+        self.x, self.y, self.vy = physics.physics.update_step(self.vx, self.vy, self.x, self.y, dt)
+
+        # Stop if projectile hits ground
+        if self.y <= 0:
+            self.projectile_active = False
 
 
+    # --- Draw Projectile ---
+    def _draw_projectile(self, screen):
+        sx, sy = self._phys_to_screen(self.x, self.y)
+        pygame.draw.circle(screen, self.ARC_COLOR, (sx, sy), self.PROJECTILE_RADIUS)
 
-    # Main Run Method --- we're going to call this from main.py
 
-    def run(self, arc):
- 
+    # --- Draw Aiming Line When Dragging ---
+    def _draw_aim_line(self, screen):
+        mx, my = pygame.mouse.get_pos()
+        pygame.draw.line(screen, self.AIM_LINE_COLOR,
+                         (self.launch_x_px, self.launch_y_px),
+                         (mx, my), 3)
+
+
+    # ------------------------ MAIN LOOP ------------------------
+    def run(self):
         pygame.init()
         screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("Projectile Motion Simulator")
@@ -94,42 +112,36 @@ class VisualSimulator:
 
         running = True
         while running:
-            # dt_s is delta time in seconds
-            dt_ms = clock.tick(60) # Limits frame rate to 60 FPS
-            dt_s = dt_ms / 1000.0
-            self.t_wave += dt_s # Update wave animation time
+            dt = clock.tick(60) / 1000.0
+            self.t_wave += dt  # wave animation time
 
+            # --- Event Handling ---
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                    
-            # --- Drawing section ---
-            screen.fill(self.SKY_BLUE)  # sky background
 
-            # 1. Draw the trajectory
-            self._draw_trajectory(screen, arc)
-            
-            # 2. Draw the wave/ground level
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    self.mouse_down = True
+
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    if self.mouse_down:
+                        self._launch_projectile()
+                    self.mouse_down = False
+
+            # --- Update physics if projectile is flying ---
+            if self.projectile_active:
+                self._update_projectile(dt)
+
+            # --- Drawing ---
+            screen.fill(self.SKY_BLUE)
             self._draw_waves(screen)
-            
+
+            if self.projectile_active:
+                self._draw_projectile(screen)
+            elif self.mouse_down:
+                self._draw_aim_line(screen)
+
             pygame.display.flip()
 
         pygame.quit()
         sys.exit()
-
-# --- Testing block (for direct execution) ---
-if __name__ == '__main__':
-    print("Running visuals.py class directly with dummy data. Run main.py instead.")
-    
-    # Example usage:
-    simulator = VisualSimulator()
-    
-    # Dummy arc data
-    test_arc = [
-        (0, 0, 0), 
-        (100, 100, 1), 
-        (200, 150, 2), 
-        (300, 100, 3), 
-        (400, 0, 4)
-    ]
-    simulator.run(test_arc)
