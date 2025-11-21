@@ -3,9 +3,6 @@ import sys
 import math
 
 class VisualSimulator:
-    """
-    Handles all Pygame setup, scaling, and rendering logic for the projectile motion.
-    """
     
     def __init__(self, width=1000, height=600, max_x=500.0, max_y=300.0, ground_offset=100):
         # --- Configuration Constants ---
