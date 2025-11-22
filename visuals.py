@@ -6,18 +6,18 @@ import physics   # Physics stays in physics.py
 class VisualSimulator:
     
     def __init__(self, width=1000, height=600, max_x=500.0, max_y=300.0, ground_offset=100):
-        # --- Configuration Constants ---
+        #  Configuration Constants 
         self.WIDTH = width
         self.HEIGHT = height
         self.GROUND_Y_OFFSET = ground_offset
         
-        # --- Physics to Screen Scaling ---
+        #  Physics to Screen Scaling 
         self.MAX_PHYSICS_X = max_x 
         self.MAX_PHYSICS_Y = max_y 
         self.X_SCALE = self.WIDTH / self.MAX_PHYSICS_X 
         self.Y_SCALE = (self.HEIGHT - self.GROUND_Y_OFFSET) / self.MAX_PHYSICS_Y 
 
-        # --- Drawing Colors ---
+        #  Drawing Colors 
         self.SKY_BLUE = (135, 206, 235)
         self.SEA_BLUE = (0, 0, 255)
         self.ARC_COLOR = (255, 0, 0)
@@ -25,17 +25,17 @@ class VisualSimulator:
         self.ARC_THICKNESS = 3
         self.PROJECTILE_RADIUS = 8
         
-        # --- Wave Animation Properties ---
+        #  Wave Animation Properties 
         self.wave_amplitude = 15      
         self.wave_length = 200        
         self.wave_speed = 0.1        
         self.t_wave = 0  
 
-        # --- Launch Origin Location (pixels) ---
+        #  Launch Origin Location (pixels) 
         self.launch_x_px = 80  
         self.launch_y_px = self.HEIGHT - self.GROUND_Y_OFFSET - 10
 
-        # --- Projectile Motion State ---
+        #  Projectile Motion State 
         self.projectile_active = False
         self.mouse_down = False
         self.x = 0
@@ -43,18 +43,18 @@ class VisualSimulator:
         self.vx = 0
         self.vy = 0
 
-        # --- Launch Power Scale (tweak feel) ---
+        # Launch Power Scale (tweak feel)
         self.POWER_SCALE = 0.055  
 
 
-    # --- Convert from Physics Coordinates (meters) to Screen Pixels ---
+    # Convert from Physics Coordinates (meters) to Screen Pixels
     def _phys_to_screen(self, x_phys, y_phys):
         screen_x = int(x_phys * self.X_SCALE)
         screen_y = int((self.HEIGHT - self.GROUND_Y_OFFSET) - (y_phys * self.Y_SCALE))
         return screen_x, screen_y
 
 
-    # --- Draw Ocean Animation ---
+    # Draw Ocean Animation 
     def _draw_waves(self, screen):
         points = []
         for x in range(0, self.WIDTH + 1, 10):
@@ -66,7 +66,7 @@ class VisualSimulator:
         pygame.draw.polygon(screen, self.SEA_BLUE, points)
 
 
-    # --- Mouse Launch Logic (calls physics class externally) ---
+    # Mouse Launch Logic (calls physics class externally) 
     def _launch_projectile(self):
         mx, my = pygame.mouse.get_pos()
         dx = mx - self.launch_x_px
@@ -80,7 +80,7 @@ class VisualSimulator:
         self.projectile_active = True
 
 
-    # --- Update Projectile Using Physics Class ---
+    # Update Projectile Using Physics Class
     def _update_projectile(self, dt):
         self.x, self.y, self.vy = physics.physics.update_step(self.vx, self.vy, self.x, self.y, dt)
 
@@ -89,21 +89,51 @@ class VisualSimulator:
             self.projectile_active = False
 
 
-    # --- Draw Projectile ---
+    # Draw Projectile 
     def _draw_projectile(self, screen):
         sx, sy = self._phys_to_screen(self.x, self.y)
         pygame.draw.circle(screen, self.ARC_COLOR, (sx, sy), self.PROJECTILE_RADIUS)
 
 
-    # --- Draw Aiming Line When Dragging ---
+    # Draw Aiming Line When Dragging 
     def _draw_aim_line(self, screen):
         mx, my = pygame.mouse.get_pos()
         pygame.draw.line(screen, self.AIM_LINE_COLOR,
                          (self.launch_x_px, self.launch_y_px),
                          (mx, my), 3)
+        
+    def drawShip(self, screen, x, y):
+        x_screen = int(x_phys * self.X_SCALE)
+        y_wave = (self.HEIGHT - self.GROUND_Y_OFFSET
+        math.sin((x_screen / self.wave_length) + (self.t_wave / self.wave_speed)) *
+        self.wave_amplitude
+        )
+    yShip = y_wave - 12  #this positions the ship above the wave to make it seem like it's floating
+
+    hull_color = (139, 69, 19)
+    hull_width = 50
+    hull_height = 20
+
+    pygame.draw.polygon(screen, hull_color,[
+        (x_screen - hull_width,     y_ship),
+        (x_screen + hull_width,     y_ship),
+        (x_screen + hull_width - 15, y_ship + hull_height),
+        (x_screen - hull_width + 15, y_ship + hull_height)
+    ])
+
+    pygame.draw.line(screen, (60, 60, 60),
+                    (x_screen, y_ship),
+                    (x_screen, y_ship - 50), 5)
+
+    pygame.draw.polygon(screen, (255, 255, 255), [
+            (x_screen, y_ship - 50),
+            (x_screen + 45, y_ship - 25),
+            (x_screen, y_ship - 25)
+        ])
 
 
-    # ------------------------ MAIN LOOP ------------------------
+
+    #  MAIN LOOP
     def run(self):
         pygame.init()
         screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
@@ -115,7 +145,7 @@ class VisualSimulator:
             dt = clock.tick(60) / 1000.0
             self.t_wave += dt  # wave animation time
 
-            # --- Event Handling ---
+            #  Event Handling 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -128,11 +158,11 @@ class VisualSimulator:
                         self._launch_projectile()
                     self.mouse_down = False
 
-            # --- Update physics if projectile is flying ---
+            # Update physics if projectile is flying
             if self.projectile_active:
                 self._update_projectile(dt)
 
-            # --- Drawing ---
+            # Drawing 
             screen.fill(self.SKY_BLUE)
             self._draw_waves(screen)
 
