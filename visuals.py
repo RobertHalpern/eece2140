@@ -105,8 +105,8 @@ class VisualSimulator:
     def drawShip(self, screen, x, y):
         x_screen = int(x_phys * self.X_SCALE)
         y_wave = (self.HEIGHT - self.GROUND_Y_OFFSET
-        math.sin((x_screen / self.wave_length) + (self.t_wave / self.wave_speed)) *
-        self.wave_amplitude
+            math.sin((x_screen / self.wave_length) + (self.t_wave / self.wave_speed)) *
+            self.wave_amplitude
         )
     yShip = y_wave - 12  #this positions the ship above the wave to make it seem like it's floating
 
@@ -131,6 +131,12 @@ class VisualSimulator:
             (x_screen, y_ship - 25)
         ])
 
+    cannonX = x_screen - 20
+    cannonY = y_ship - 10
+
+    pygame.draw.rect(screen, (40,40,40), (cannonX, cannonY, 30, 8))
+
+    pygame.draw.circle(screen, (70,70,70), (cannonX + 5, cannonY + 10), 6)
 
 
     #  MAIN LOOP
@@ -142,34 +148,24 @@ class VisualSimulator:
 
         running = True
         while running:
-            dt = clock.tick(60) / 1000.0
-            self.t_wave += dt  # wave animation time
+            dt_ms = clock.tick(60)
+            dt_s = dt_ms / 1000.0
+            self.t_wave += dt_s
 
-            #  Event Handling 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    self.mouse_down = True
-
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    if self.mouse_down:
-                        self._launch_projectile()
-                    self.mouse_down = False
-
-            # Update physics if projectile is flying
-            if self.projectile_active:
-                self._update_projectile(dt)
-
-            # Drawing 
+                    
             screen.fill(self.SKY_BLUE)
+
+            # 1. Projectile trajectory
+            self._draw_trajectory(screen, arc)
+
+            # 2. Waves
             self._draw_waves(screen)
 
-            if self.projectile_active:
-                self._draw_projectile(screen)
-            elif self.mouse_down:
-                self._draw_aim_line(screen)
+            # 3. Ship floating on waves
+            self._draw_ship(screen, x_phys=50)
 
             pygame.display.flip()
 
