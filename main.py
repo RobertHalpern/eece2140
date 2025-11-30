@@ -1,5 +1,4 @@
 import visuals
-import physics
 
 
 def main():

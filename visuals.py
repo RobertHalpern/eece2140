@@ -102,41 +102,50 @@ class VisualSimulator:
                          (self.launch_x_px, self.launch_y_px),
                          (mx, my), 3)
         
-    def drawShip(self, screen, x, y):
+    def drawShip(self, screen, x_phys):
+        # Convert physics x to screen x
         x_screen = int(x_phys * self.X_SCALE)
-        y_wave = (self.HEIGHT - self.GROUND_Y_OFFSET
-            math.sin((x_screen / self.wave_length) + (self.t_wave / self.wave_speed)) *
-            self.wave_amplitude
+
+        # Wave riding motion
+        y_wave = (
+            (self.HEIGHT - self.GROUND_Y_OFFSET)
+            + math.sin((x_screen / self.wave_length) + (self.t_wave / self.wave_speed))
+              * self.wave_amplitude
         )
-    yShip = y_wave - 12  #this positions the ship above the wave to make it seem like it's floating
 
-    hull_color = (139, 69, 19)
-    hull_width = 50
-    hull_height = 20
+        # Offset to sit ship on wave
+        y_ship = y_wave - 12
 
-    pygame.draw.polygon(screen, hull_color,[
-        (x_screen - hull_width,     y_ship),
-        (x_screen + hull_width,     y_ship),
-        (x_screen + hull_width - 15, y_ship + hull_height),
-        (x_screen - hull_width + 15, y_ship + hull_height)
-    ])
+        #  Draw Ship Hull 
+        hull_color = (139, 69, 19)
+        hull_width = 50
+        hull_height = 20
 
-    pygame.draw.line(screen, (60, 60, 60),
-                    (x_screen, y_ship),
-                    (x_screen, y_ship - 50), 5)
-
-    pygame.draw.polygon(screen, (255, 255, 255), [
-            (x_screen, y_ship - 50),
-            (x_screen + 45, y_ship - 25),
-            (x_screen, y_ship - 25)
+        pygame.draw.polygon(screen, hull_color, [
+            (x_screen - hull_width,       y_ship),
+            (x_screen + hull_width,       y_ship),
+            (x_screen + hull_width - 15,  y_ship + hull_height),
+            (x_screen - hull_width + 15,  y_ship + hull_height)
         ])
 
-    cannonX = x_screen - 20
-    cannonY = y_ship - 10
+        #  Mast 
+        pygame.draw.line(screen, (60, 60, 60),
+                         (x_screen, y_ship),
+                         (x_screen, y_ship - 50), 5)
 
-    pygame.draw.rect(screen, (40,40,40), (cannonX, cannonY, 30, 8))
+        #  Sail 
+        pygame.draw.polygon(screen, (255, 255, 255), [
+            (x_screen,       y_ship - 50),
+            (x_screen + 45,  y_ship - 25),
+            (x_screen,       y_ship - 25)
+        ])
 
-    pygame.draw.circle(screen, (70,70,70), (cannonX + 5, cannonY + 10), 6)
+        # Cannon 
+        cannonX = x_screen - 20
+        cannonY = y_ship - 10
+
+        pygame.draw.rect(screen, (40, 40, 40), (cannonX, cannonY, 30, 8))
+        pygame.draw.circle(screen, (70, 70, 70), (cannonX + 5, cannonY + 10), 6)
 
 
     #  MAIN LOOP
@@ -158,14 +167,11 @@ class VisualSimulator:
                     
             screen.fill(self.SKY_BLUE)
 
-            # 1. Projectile trajectory
-            self._draw_trajectory(screen, arc)
-
             # 2. Waves
             self._draw_waves(screen)
 
             # 3. Ship floating on waves
-            self._draw_ship(screen, x_phys=50)
+            self.drawShip(screen, x_phys=50)
 
             pygame.display.flip()
 
