@@ -1,4 +1,6 @@
 import visuals
+import physics
+
 
 def main():
     print("Projectile Motion Simulator - Angry Birds Style")
