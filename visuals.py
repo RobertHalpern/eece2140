@@ -28,7 +28,7 @@ class VisualSimulator:
         #  Wave Animation Properties 
         self.wave_amplitude = 15      
         self.wave_length = 200        
-        self.wave_speed = 0.1        
+        self.wave_speed = 0.3  
         self.t_wave = 0  
 
         #  Launch Origin Location (pixels) 
@@ -45,6 +45,10 @@ class VisualSimulator:
 
         # Launch Power Scale (tweak feel)
         self.POWER_SCALE = 0.055  
+
+        # Tracer
+        self.trail = []
+        self.MAX_TRAIL_LENGTH = 300
 
 
     # Convert from Physics Coordinates (meters) to Screen Pixels
@@ -69,8 +73,10 @@ class VisualSimulator:
     # Mouse Launch Logic (calls physics class externally) 
     def _launch_projectile(self):
         mx, my = pygame.mouse.get_pos()
-        dx = mx - self.launch_x_px
-        dy = self.launch_y_px - my  # invert due to Pygame coords
+        cx, cy = self._get_cannon_position()
+
+        dx = mx - cx
+        dy = cy - my  # invert due to Pygame coords
 
         self.vx, self.vy = physics.physics.launch_from_mouse(dx, dy, self.POWER_SCALE)
 
@@ -78,11 +84,18 @@ class VisualSimulator:
         self.x = 0
         self.y = 0
         self.projectile_active = True
+        self.trail = []
+
 
 
     # Update Projectile Using Physics Class
     def _update_projectile(self, dt):
         self.x, self.y, self.vy = physics.physics.update_step(self.vx, self.vy, self.x, self.y, dt)
+
+        # add tracer point
+        self.trail.append((self.x, self.y))
+        if len(self.trail) > self.MAX_TRAIL_LENGTH:
+            self.trail.pop(0)
 
         # Stop if projectile hits ground
         if self.y <= 0:
@@ -91,17 +104,69 @@ class VisualSimulator:
 
     # Draw Projectile 
     def _draw_projectile(self, screen):
-        sx, sy = self._phys_to_screen(self.x, self.y)
+        # physics coords → delta offset
+        ox, oy = self._phys_to_screen(self.x, self.y)
+
+        # cannon screen coords
+        cx, cy = self._get_cannon_position()
+
+        # projectile position = cannon + physics displacement
+        sx = cx + (ox - self._phys_to_screen(0, 0)[0])
+        sy = cy + (oy - self._phys_to_screen(0, 0)[1])
+
         pygame.draw.circle(screen, self.ARC_COLOR, (sx, sy), self.PROJECTILE_RADIUS)
+
 
 
     # Draw Aiming Line When Dragging 
     def _draw_aim_line(self, screen):
         mx, my = pygame.mouse.get_pos()
+        cx, cy = self._get_cannon_position()
         pygame.draw.line(screen, self.AIM_LINE_COLOR,
-                         (self.launch_x_px, self.launch_y_px),
-                         (mx, my), 3)
+                        (cx, cy),
+                        (mx, my), 3)
+
+
+    def _draw_trail(self, screen):
+        # cannon bobbing offset (same as projectile)
+        cx, cy = self._get_cannon_position()
         
+        # origin of physics 0,0 in screen coords
+        ox0, oy0 = self._phys_to_screen(0, 0)
+
+        for tx, ty in self.trail:
+            # convert physics → screen
+            sx, sy = self._phys_to_screen(tx, ty)
+
+            # align tracer to moving cannon base
+            sx = cx + (sx - ox0)
+            sy = cy + (sy - oy0)
+
+            pygame.draw.circle(screen, (255, 255, 0), (sx, sy), 3)
+
+
+    def _get_cannon_position(self):
+        # Convert physics x to screen
+        x_screen = int(50 * self.X_SCALE)   # ship x position is hardcoded as 50
+
+        # Wave riding motion (same as drawShip)
+        y_wave = (
+            (self.HEIGHT - self.GROUND_Y_OFFSET)
+            + math.sin((x_screen / self.wave_length) + (self.t_wave / self.wave_speed))
+            * self.wave_amplitude
+        )
+
+        # Ship’s vertical position
+        y_ship = y_wave - 12
+
+        # Cannon geometry (same values as drawShip)
+        cannonX = x_screen + 5 # I just guessed and checked to align the barrel
+        cannonY = y_ship - 10
+
+        return cannonX, cannonY
+
+
+
     def drawShip(self, screen, x_phys):
         # Convert physics x to screen x
         x_screen = int(x_phys * self.X_SCALE)
@@ -164,14 +229,34 @@ class VisualSimulator:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
+                # Mouse press
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self.mouse_down = True
+
+                # Release → launch projectile
+                if event.type == pygame.MOUSEBUTTONUP:
+                    if self.mouse_down:
+                        self._launch_projectile()
+                    self.mouse_down = False
                     
             screen.fill(self.SKY_BLUE)
 
             # 2. Waves
             self._draw_waves(screen)
 
-            # 3. Ship floating on waves
+            # 3. Ship floating
             self.drawShip(screen, x_phys=50)
+
+            # 4. Aim line
+            if self.mouse_down:
+                self._draw_aim_line(screen)
+
+            # 5. Projectile + physics update
+            if self.projectile_active:
+                self._update_projectile(dt_s)
+                self._draw_trail(screen)
+                self._draw_projectile(screen)
 
             pygame.display.flip()
 
