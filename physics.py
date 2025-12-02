@@ -6,17 +6,15 @@ class physics:
 
     @staticmethod
     def launch_from_mouse(dx, dy, power_scale):
-        """
-        Convert mouse drag dx, dy into launch speed and angle.
-        Returns (Vx, Vy) in m/s.
-        """
         angle = math.atan2(dy, dx)
         power = math.sqrt(dx*dx + dy*dy) * 8
         speed = power * power_scale
-        
+
         Vx = speed * math.cos(angle)
         Vy = speed * math.sin(angle)
-        return Vx, Vy
+
+        return Vx, Vy, angle, speed
+
 
     @staticmethod
     def update_step(Vx, Vy, x, y, dt):

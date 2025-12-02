@@ -2,6 +2,8 @@ import pygame
 import sys
 import math
 import physics   # Physics stays in physics.py
+import data_export
+
 
 class VisualSimulator:
     
@@ -50,6 +52,11 @@ class VisualSimulator:
         self.trail = []
         self.MAX_TRAIL_LENGTH = 300
 
+        self.flight_data = []
+        self.time_since_launch = 0.0
+        self.last_vx = 0.0  # store constant Vx
+
+
 
     # Convert from Physics Coordinates (meters) to Screen Pixels
     def _phys_to_screen(self, x_phys, y_phys):
@@ -70,36 +77,61 @@ class VisualSimulator:
         pygame.draw.polygon(screen, self.SEA_BLUE, points)
 
 
-    # Mouse Launch Logic (calls physics class externally) 
     def _launch_projectile(self):
         mx, my = pygame.mouse.get_pos()
         cx, cy = self._get_cannon_position()
 
         dx = mx - cx
-        dy = cy - my  # invert due to Pygame coords
+        dy = cy - my
 
-        self.vx, self.vy = physics.physics.launch_from_mouse(dx, dy, self.POWER_SCALE)
+        self.vx, self.vy, angle, speed = physics.physics.launch_from_mouse(dx, dy, self.POWER_SCALE)
 
-        # Reset physics position
+        # save launch conditions for CSV
+        self.launch_angle_deg = math.degrees(angle)
+        self.launch_speed = speed
+        self.last_vx = self.vx
+
         self.x = 0
         self.y = 0
         self.projectile_active = True
         self.trail = []
+        self.flight_data = []
+        self.time_since_launch = 0.0
 
 
-
-    # Update Projectile Using Physics Class
     def _update_projectile(self, dt):
+        # Save before updating
+        self.flight_data.append(
+            (
+                self.time_since_launch,
+                self.x,
+                self.y,
+                self.vx,
+                self.vy
+            )
+        )
+
+        self.time_since_launch += dt
+
+        # Update physics
         self.x, self.y, self.vy = physics.physics.update_step(self.vx, self.vy, self.x, self.y, dt)
 
-        # add tracer point
+        # add trail
         self.trail.append((self.x, self.y))
         if len(self.trail) > self.MAX_TRAIL_LENGTH:
             self.trail.pop(0)
 
-        # Stop if projectile hits ground
+        # stop if ground hit
         if self.y <= 0:
             self.projectile_active = False
+            # Save file
+            filename = data_export.save_trajectory_csv(
+                self.flight_data,
+                self.launch_angle_deg,
+                self.launch_speed
+            )
+            print(f"Saved trajectory CSV: {filename}")
+
 
 
     # Draw Projectile 
