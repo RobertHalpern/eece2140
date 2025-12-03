@@ -1,7 +1,41 @@
 # graph.py
 import sys
 import csv
+import os
+import glob
 import matplotlib.pyplot as plt
+
+TRAJ_DIR = "trajectories"
+
+def find_latest_file():
+    files = glob.glob(os.path.join(TRAJ_DIR, "*.csv"))
+    if not files:
+        print("No trajectory files found in 'trajectories/'.")
+        sys.exit(1)
+    return max(files, key=os.path.getmtime)
+
+
+def resolve_filename(user_input):
+    """
+    Accepts:
+      - plain filename
+      - filename without path
+      - full path
+    Returns full path inside trajectories/
+    """
+
+    # If already a path inside trajectories
+    if os.path.isfile(user_input):
+        return user_input
+
+    # Try inside the trajectories folder
+    candidate = os.path.join(TRAJ_DIR, user_input)
+    if os.path.isfile(candidate):
+        return candidate
+
+    print(f"File '{user_input}' not found in '{TRAJ_DIR}'.")
+    sys.exit(1)
+
 
 def read_csv(filename):
     with open(filename, "r") as f:
@@ -13,7 +47,7 @@ def read_csv(filename):
     launch_angle_deg = float(angle_line[0])
     launch_speed = float(angle_line[1])
 
-    # Find where the numeric data begins
+    # Find start of data
     for i, line in enumerate(rows):
         if len(line) > 0 and line[0] == "t (s)":
             data_start_index = i + 1
@@ -31,14 +65,22 @@ def read_csv(filename):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python graph.py <csv_file>")
+
+    # No filename provided → use most recent CSV
+    if len(sys.argv) == 1:
+        filename = find_latest_file()
+        print(f"Using newest trajectory file: {filename}")
+
+    # One argument → try to resolve it
+    elif len(sys.argv) == 2:
+        filename = resolve_filename(sys.argv[1])
+        print(f"Loading trajectory: {filename}")
+
+    else:
+        print("Usage: python graph.py [csv_file]")
         sys.exit(1)
 
-    filename = sys.argv[1]
-
-    print(f"Loading trajectory: {filename}")
-
+    # Parse CSV
     angle_deg, speed, t, x, y = read_csv(filename)
 
     # Plot trajectory
