@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # graph.py
 import sys
 import csv
@@ -65,7 +67,6 @@ def read_csv(filename):
 
 
 def main():
-
     # No filename provided → use most recent CSV
     if len(sys.argv) == 1:
         filename = find_latest_file()
