@@ -1,10 +1,11 @@
+#!/usr/bin/env python
+
 import visuals
 
 
 def main():
-    print("Projectile Motion Simulator - Angry Birds Style")
+    print("EECE2140 Final Project: Projectile Motion Simulator")
 
-    # No speed/angle prompts anymore
     simulator = visuals.VisualSimulator()
     simulator.run()
 
